@@ -71,8 +71,20 @@ Four edubfm_FlushTrain(
 	/* Error check whether using not supported functionality by EduBfM */
 	if (RM_IS_ROLLBACK_REQUIRED()) ERR(eNOTSUPPORTED_EDUBFM);
 
+    index = edubfm_LookUp(trainId, type);
 
+    if(index == NOTFOUND_IN_HTABLE) {
+        return (eNOTFOUND_BFM);
+    }
 	
+    if(BI_BITS(type, index) & (DIRTY)) { // if train/page is dirty
+        e = RDsM_WriteTrain(BI_BUFFER(type, index), trainId, BI_BUFSIZE(type));
+        if(e) {
+            return e;
+        }
+        BI_BITS(type, index) &= ~(DIRTY); // unset dirty bit
+    }
+
     return( eNOERROR );
 
 }  /* edubfm_FlushTrain */
