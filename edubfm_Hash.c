@@ -133,9 +133,27 @@ Four edubfm_Delete(
 
     CHECKKEY(key);    /*@ check validity of key */
 
+    // we can't use edubfm_LookUp since we need to find the previous index(in case of collision) too.
+    hashValue = BFM_HASH(key, type);
+    prev = NIL;
+    i = BI_HASHTABLEENTRY(type, hashValue);
+    while(i != NIL) {
+        if(EQUALKEY(key, &BI_KEY(type, i))) { // entry found
+            if(prev != NIL) {
+                BI_NEXTHASHENTRY(type, prev) = BI_HASHTABLEENTRY(type, i); // update linked list
+            }
+            else {
+                BI_HASHTABLEENTRY(type, hashValue) = BI_HASHTABLEENTRY(type, i); // update hash table entry
+            }
+            return (eNOERROR);
+        }
+        else {
+            prev = i;
+            i = BI_NEXTHASHENTRY(type, prev);
+        }
+    }
 
-
-    ERR( eNOTFOUND_BFM );
+    ERR( eNOTFOUND_BFM ); // entry with given key not found
 
 }  /* edubfm_Delete */
 
