@@ -91,7 +91,14 @@ Four edubfm_Insert(
     if( (index < 0) || (index > BI_NBUFS(type)) )
         ERR( eBADBUFINDEX_BFM );
 
-   
+    hashValue = BFM_HASH(key, type);
+    i = BI_HASHTABLEENTRY(type, hashValue); // get hash table entry
+
+    if(i != NIL) { // if entry is not empty, collision occured
+        BI_NEXTHASHENTRY(type, index) = i; // chaining
+    }
+
+    BI_HASHTABLEENTRY(type, hashValue) = index;
 
     return( eNOERROR );
 
