@@ -66,8 +66,20 @@ Four EduBfM_FreeTrain(
     /*@ check if the parameter is valid. */
     if (IS_BAD_BUFFERTYPE(type)) ERR(eBADBUFFERTYPE_BFM);	
 
-
+    index = edubfm_LookUp(trainId, type);
+    if(index == NOTFOUND_IN_HTABLE) { // if trainId is not found
+        ERR(eNOTFOUND_BFM);
+    }
     
+    if(BI_FIXED(type, index) == 0) { // if fixed count is already 0
+        printf("fixed counter is less than 0!!!\n");
+        // PRINT_TRAINID("trainId", trainId); this does not match with solution format
+        printf("trainId = {%ld, %ld}\n", trainId->volNo, trainId->pageNo);
+    }
+    else {
+        BI_FIXED(type, index) = BI_FIXED(type, index) - 1;
+    }
+
     return( eNOERROR );
     
 } /* EduBfM_FreeTrain() */
