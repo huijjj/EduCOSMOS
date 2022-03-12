@@ -81,7 +81,7 @@ Four edubfm_AllocTrain(
 
     i = 0;
     victim = BI_NEXTVICTIM(type);    
-    while (i < (BI_NBUFS(type) * 2)) {
+    while(i < (BI_NBUFS(type) * 2)) {
         if(BI_FIXED(type, victim) == 0) { // if page or train is not fixed by any transaction
             if(BI_BITS(type, victim) & REFER) { // check refer bit
                 BI_BITS(type, victim) &= ~REFER; // clear refer bit
@@ -106,9 +106,11 @@ Four edubfm_AllocTrain(
         }
     }
 
-    e = edubfm_Delete(&BI_KEY(type, victim), type); // delete from hash table
-    if(e) {
-        ERR(e);
+    if(BI_KEY(type, victim).pageNo != NIL) {
+        e = edubfm_Delete(&BI_KEY(type, victim), type); // delete from hash table
+        if(e) {
+            ERR(e);
+        }
     }
 
     // clear buffer table element

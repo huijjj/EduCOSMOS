@@ -140,10 +140,10 @@ Four edubfm_Delete(
     while(i != NIL) {
         if(EQUALKEY(key, &BI_KEY(type, i))) { // entry found
             if(prev != NIL) {
-                BI_NEXTHASHENTRY(type, prev) = BI_HASHTABLEENTRY(type, i); // update linked list
+                BI_NEXTHASHENTRY(type, prev) = BI_NEXTHASHENTRY(type, i); // update linked list
             }
             else {
-                BI_HASHTABLEENTRY(type, hashValue) = BI_HASHTABLEENTRY(type, i); // update hash table entry
+                BI_HASHTABLEENTRY(type, hashValue) = BI_NEXTHASHENTRY(type, i); // update hash table entry
             }
             return (eNOERROR);
         }
