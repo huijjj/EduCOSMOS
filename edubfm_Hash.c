@@ -231,7 +231,17 @@ Four edubfm_DeleteAll(void)
     Two 	i;
     Four        tableSize;
     
+    // clear page hash table
+    tableSize = HASHTABLESIZE(PAGE_BUF);
+    for(i = 0; i < tableSize; i++) { 
+        BI_HASHTABLEENTRY(PAGE_BUF, i) = NIL;
+    }
 
+    // clear train hash table
+    tableSize = HASHTABLESIZE(LOT_LEAF_BUF);
+    for(i = 0; i < tableSize; i++) { 
+        BI_HASHTABLEENTRY(LOT_LEAF_BUF, i) = NIL;
+    }
 
     return(eNOERROR);
 
