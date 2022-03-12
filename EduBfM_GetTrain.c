@@ -83,7 +83,25 @@ Four EduBfM_GetTrain(
     /* Is the buffer type valid? */
     if(IS_BAD_BUFFERTYPE(type)) ERR(eBADBUFFERTYPE_BFM);	
 
+    index = edubfm_LookUp(trainId, type);
+    if(index == NOTFOUND_IN_HTABLE) { // if train or page does not exist in hash table
+        index = edubfm_AllocTrain(type);
+        if(index < 0) {
+            ERR(index);
+        }
+        e = edubfm_ReadTrain(trainId, BI_BUFFER(type, index), type); // read train into chosen index
+        if(e) {
+            ERR(e);
+        }
+        BI_KEY(type, index) = *((BfMHashKey *)trainId); // update buffer table
+        e = edubfm_Insert(trainId, index, type); // insert into hash table
+        if(e) {
+            ERR(e);
+        }
+    }
 
+    BI_FIXED(type, index) = BI_FIXED(type, index) + 1; // update fixed count
+    *retBuf = BI_BUFFER(type, index); // set return value
 
     return(eNOERROR);   /* No error */
 
