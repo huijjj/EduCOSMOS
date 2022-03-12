@@ -191,10 +191,6 @@ Four edubfm_LookUp(
 
     i = BI_HASHTABLEENTRY(type, hashValue);
 
-    if(i == NIL) {
-        return(NOTFOUND_IN_HTABLE);
-    }
-
     while(i != NIL) {
         if(EQUALKEY(key, &BI_KEY(type, i))) {
             return i;
