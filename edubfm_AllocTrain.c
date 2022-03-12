@@ -79,8 +79,44 @@ Four edubfm_AllocTrain(
 	/* Error check whether using not supported functionality by EduBfM */
 	if(sm_cfgParams.useBulkFlush) ERR(eNOTSUPPORTED_EDUBFM);
 
+    i = 0;
+    victim = BI_NEXTVICTIM(type);    
+    while (i < (BI_NBUFS(type) * 2)) {
+        if(BI_FIXED(type, victim) == 0) { // if page or train is not fixed by any transaction
+            if(BI_BITS(type, victim) & REFER) { // check refer bit
+                BI_BITS(type, victim) &= ~REFER; // clear refer bit
+            }
+            else {
+                break; 
+            }
+        }
+        i++;
+        victim++;
+        victim %= BI_NBUFS(type);
+    }
 
+    if(i == (BI_NBUFS(type) * 2)) { // all page fixed
+        ERR(eNOUNFIXEDBUF_BFM);
+    }
     
+    if(BI_BITS(type, victim) & DIRTY) { // if page or train is dirty, flush
+        e = edubfm_FlushTrain(&BI_KEY(type, victim), type);
+        if(e) {
+            ERR(e);
+        }
+    }
+
+    e = edubfm_Delete(&BI_KEY(type, victim), type); // delete from hash table
+    if(e) {
+        ERR(e);
+    }
+
+    // clear buffer table element
+    BI_BITS(type, victim) = REFER;
+    BI_FIXED(type, victim) = 0;
+    BI_NEXTHASHENTRY(type, victim) = NIL;
+    SET_NILBFMHASHKEY(BI_KEY(type, victim));
+
     return( victim );
     
 }  /* edubfm_AllocTrain */
