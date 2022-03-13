@@ -87,6 +87,7 @@ Four edubfm_AllocTrain(
                 BI_BITS(type, victim) &= ~REFER; // clear refer bit
             }
             else {
+                BI_NEXTVICTIM(type) = (victim + 1) % BI_NBUFS(type); // update next victim
                 break; 
             }
         }
