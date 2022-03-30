@@ -284,7 +284,9 @@ Four eduom_CreateObject(
 
     // insert object to page
     obj = apage->data[apage->header.free]; // get empty data region
-    obj->header = *objHdr;
+    obj->header.properties = objHdr->properties;
+    obj->header.tag = objHdr->tag;
+    obj->header.length = length;
     memcpy(obj->data, data, length); // copy data
 
     // find slot and insert
