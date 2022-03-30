@@ -291,20 +291,22 @@ Four eduom_CreateObject(
     }
 
     // insert object to page
-    obj = apage->data[apage->header.free]; // get empty data region
+    obj = &(apage->data[apage->header.free]); // get empty data region
     obj->header.properties = objHdr->properties;
     obj->header.tag = objHdr->tag;
     obj->header.length = length;
-    memcpy(obj->data, data, length); // copy data
+    memcpy(&(obj->data), data, length); // copy data
 
     // find slot and insert
+    i = 0;
     while(i < apage->header.nSlots) { 
         if(apage->slot[-i].offset == EMPTYSLOT) { // found empty slot to insert
             break;
         }
+        i++;
     }
     if(i == apage->header.nSlots) { // make new slot if all slots are full
-        apage->header.nSlots += 1;
+        apage->header.nSlots++;
     }
     apage->slot[-i].offset = apage->header.free; // insert to slot
     e = om_GetUnique(&pid, &(apage->slot[-i].unique));
