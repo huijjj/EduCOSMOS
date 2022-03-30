@@ -105,7 +105,111 @@ Four EduOM_DestroyObject(
     if (oid == NULL) ERR(eBADOBJECTID_OM);
 
 
+    // get page
+    MAKE_PAGEID(pid, oid->volNo, oid->pageNo);
+    e = BfM_GetTrain(&pid, &apage, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+
+    // remove page from available list
+    e = om_RemoveFromAvailSpaceList(catObjForFile, &pid, apage);
+    if(e) {
+        ERR(e);
+    }
+
+    // get object
+    offset = apage->slot[-(oid->slotNo)].offset;
+    obj = apage->data + offset;
+    alignedLen = ALIGNED_LENGTH(obj->header.length);
+
+    // clear slot
+    apage->slot[-1 * (oid->slotNo)].offset = EMPTYSLOT;
+
+    // update header if needed
+    last = FALSE;
+    i = 0;
+    while(i < apage->header.nSlots) {
+        if(apage->slot[-i].offset != EMPTYSLOT) {
+            break;
+        }
+        i++;
+    }
+    if(i == apage->header.nSlots) {
+        last = TRUE;
+    }
+
+    if(last) { // if object is only object in this page
+        // get catalog file
+        e = BfM_GetTrain(catObjForFile, &catPage, PAGE_BUF);
+        if(e) {
+            ERR(e);
+        } 
+        GET_PTR_TO_CATENTRY_FOR_DATA(catObjForFile, catPage, catEntry);
+        if(oid->pageNo == catEntry->firstPage) { // this page is first page of file
+            // update header
+            apage->header.nSlots = 1;
+            apage->header.free = 0;
+            apage->header.unused = 0;
+            BfM_SetDirty(&pid, PAGE_BUF);
+
+            e = om_PutInAvailSpaceList(catObjForFile, &pid, apage); // insert into available list
+            if(e) {
+                BfM_FreeTrain(catPage, PAGE_BUF);
+                BfM_FreeTrain(apage, PAGE_BUF);
+                ERR(e);
+            }
+        }
+        else { // this page is not first page of file
+            e = om_FileMapDeletePage(catObjForFile, apage); // delete page from file page list
+            if(e) {
+                BfM_FreeTrain(catPage, PAGE_BUF);
+                BfM_FreeTrain(apage, PAGE_BUF);
+                ERR(e);
+            }
+            // add page to deallocation list
+            e = Util_getElementFromPool(dlPool, dlElem);
+            if(e) {
+                BfM_FreeTrain(catPage, PAGE_BUF);
+                BfM_FreeTrain(apage, PAGE_BUF);
+                ERR(e);
+            }
+            dlElem->type = DL_PAGE;
+            dlElem->next = dlHead;
+            dlElem->elem.pid = pid;
+            dlHead = dlElem; // update list head
+        }
+        e = BfM_FreeTrain(catPage, PAGE_BUF);
+        if(e) {
+            BfM_FreeTrain(apage, PAGE_BUF);
+            ERR(e);
+        }
+    }
+    else { // if this object is not the only object
+        if(oid->slotNo + 1 == apage->header.nSlots) { // if object is in the last slot
+            apage->header.nSlots--;
+        }
+        if(offset + alignedLen + sizeof(ObjectHdr) == apage->header.free) { // if object is the last object in data region
+            apage->header.free -= sizeof(ObjectHdr);
+            apage->header.free -= alignedLen;
+        }
+        else {
+            apage->header.unused += sizeof(ObjectHdr);
+            apage->header.unused += alignedLen;
+        }
+        e = om_PutInAvailSpaceList(catObjForFile, &pid, apage); // insert to available list
+        if(e) {
+            BfM_FreeTrain(apage, PAGE_BUF);
+            ERR(e);
+        }
+        BfM_SetDirty(&pid, PAGE_BUF);
+    }
     
+    e = BfM_FreeTrain(apage, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+
     return(eNOERROR);
     
 } /* EduOM_DestroyObject() */
