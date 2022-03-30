@@ -1491,4 +1491,14 @@ EduOM_TestModule_OBJECT_NUM_0
 | 81|        31 EduOM_TestModule_OBJECT_NUM_165              |
 | 82|        31 EduOM_TestModule_OBJECT_NUM_166              |
 | 83|        31 EduOM_TestModule_OBJECT_NUM_167              |
-+
++------------------------------------------------------------+
+
+
+[ObjectID] : (1000, 209, 0, 100)
+[PROPERTIES] : PLAIN 
+[TAG] : 0
+[LENGTH] : 30
+[DATA] : EduOM_TestModule_OBJECT_NUM_84
+
+
+****************************** TEST#4, EduOM_NextObject. ******************************

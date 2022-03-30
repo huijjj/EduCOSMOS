@@ -104,7 +104,6 @@ Four EduOM_DestroyObject(
 
     if (oid == NULL) ERR(eBADOBJECTID_OM);
 
-
     // get page
     MAKE_PAGEID(pid, oid->volNo, oid->pageNo);
     e = BfM_GetTrain(&pid, &apage, PAGE_BUF);
@@ -167,7 +166,9 @@ Four EduOM_DestroyObject(
                 BfM_FreeTrain(apage, PAGE_BUF);
                 ERR(e);
             }
+
             // add page to deallocation list
+            dlElem = dlHead;
             e = Util_getElementFromPool(dlPool, dlElem);
             if(e) {
                 BfM_FreeTrain(catPage, PAGE_BUF);
@@ -177,7 +178,6 @@ Four EduOM_DestroyObject(
             dlElem->type = DL_PAGE;
             dlElem->next = dlHead;
             dlElem->elem.pid = pid;
-            dlHead = dlElem; // update list head
         }
         e = BfM_FreeTrain(catPage, PAGE_BUF);
         if(e) {

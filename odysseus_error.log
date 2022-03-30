@@ -298,3 +298,4 @@
 [PID=74265][Tue Mar  1 15:32:48 2022] Error : -589829(eNOLOGGEDTRANSACTION_RM) in SM_Transaction.c:258
 [PID=74265][Tue Mar  1 15:32:48 2022] Error : -589829(eNOLOGGEDTRANSACTION_RM) in SM_ThinLayer.c:761
 [PID=74265][Tue Mar  1 15:32:48 2022] Error : -589829(eNOLOGGEDTRANSACTION_RM) in LRDS_Transaction.c:133
+[PID=15141][Wed Mar 30 21:05:24 2022] Error : -1(Unix error code) in EduOM_Test.c:262
