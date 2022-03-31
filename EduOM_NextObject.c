@@ -90,8 +90,82 @@ Four EduOM_NextObject(
     
     if (nextOID == NULL) ERR(eBADOBJECTID_OM);
 
+    // get catalog table page
+    MAKE_PAGEID(pFid, catObjForFile->volNo, catObjForFile->pageNo);
+    e = BfM_GetTrain(&pFid, &catPage, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+    GET_PTR_TO_CATENTRY_FOR_DATA(catObjForFile, catPage, catEntry);
 
+    if(curOID == NULL) {
+        MAKE_PAGEID(pid, catEntry->fid.volNo, catEntry->firstPage);
+        i = 0;
+    }
+    else {
+        MAKE_PAGEID(pid, curOID->volNo, curOID->pageNo);
+        i = curOID->slotNo + 1;
+    }
+ 
+    e = BfM_GetTrain(&pid, &apage, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
 
-    return(EOS);		/* end of scan */
-    
+    // find the next object
+    while(i < apage->header.nSlots) {
+        if(apage->slot[-1 * i].offset != EMPTYSLOT) {
+            break;
+        }
+        i++;
+    }
+
+    if(i == apage->header.nSlots) {
+        if(pid.pageNo == catEntry->lastPage) {
+            e = BfM_FreeTrain(&pFid, PAGE_BUF);
+            if(e) {
+                ERR(e);
+            }
+            e = BfM_FreeTrain(&pid, PAGE_BUF);
+            if(e) {
+                ERR(e);
+            }
+            return(EOS); // end of scan
+        }
+        else {
+            e = BfM_FreeTrain(&pid, PAGE_BUF);
+            if(e) {
+                ERR(e);
+            }
+            pid.pageNo = apage->header.nextPage;
+            e = BfM_GetTrain(&pid, &apage, PAGE_BUF);
+            if(e) {
+                ERR(e);
+            }
+            i = 0;
+            while (i < apage->header.nSlots) {
+                if(apage->slot[-1 * i].offset != EMPTYSLOT) {
+                    break;
+                }
+                i++;
+            }
+        }
+    }
+
+    // fill return values
+    obj = &(apage->data[apage->slot[-1 * i].offset]);
+
+    MAKE_OBJECTID(*nextOID, pid.volNo, pid.pageNo, i, apage->slot[-1 * i].unique);
+    if(objHdr) {
+        *objHdr = obj->header;
+    }
+    e = BfM_FreeTrain(&pFid, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+    e = BfM_FreeTrain(&pid, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+    return eNOERROR;
 } /* EduOM_NextObject() */
