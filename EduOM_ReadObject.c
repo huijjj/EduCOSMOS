@@ -108,8 +108,36 @@ Four EduOM_ReadObject(
     
     if (buf == NULL) ERR(eBADUSERBUF_OM);
 
-    
+    MAKE_PAGEID(pid, oid->volNo, oid->pageNo);
 
+    e = BfM_GetTrain(&pid, &apage, PAGE_BUF); // read page
+    if(e) {
+        ERR(e);
+    }
+
+    if(obj->header.length < start) {
+        BfM_FreeTrain(&pid, PAGE_BUF);
+        ERR(eBADSTART_OM);
+    }
+    if(obj->header.length < start + length) {
+        BfM_FreeTrain(&pid, PAGE_BUF);
+        ERR(eBADLENGTH_OM);
+    }
+
+    obj = &(apage->data[apage->slot[-1 * oid->slotNo].offset]);
+
+
+    // copy data to buffer
+    if(length == REMAINDER) {
+        length = obj->header.length - start;
+    }
+    memcpy(buf, &(obj->data[start]), length);
+
+    e = BfM_FreeTrain(&pid, PAGE_BUF);
+    if(e) {
+        ERR(e);
+    }
+    
     return(length);
     
 } /* EduOM_ReadObject() */
