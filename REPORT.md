@@ -48,7 +48,7 @@ Our goal is to implement APIs for creating(CreateObject) and destroying(DestroyO
     Get the object corresponding to given parameters. Copy data according to start offset within the object data and length. Note that start offset is not the offset from start of a page data region but is from the start of an object data region.
 
 5. EduOM_NextObject
-    Get the page of current object given as curOID. If curOID is not given get the first page of the file. Search the slot array from the next index of current object(or from the start if not given). If next object is not in the same page, get the next page and search the slot array from the begining. If the given obejct was the last object of a file return End-Of-Search. If next object is chosen return the OID and header of chosen object.ss
+    Get the page of current object given as curOID. If curOID is not given get the first page of the file. Search the slot array from the next index of current object(or from the start if not given). If next object is not in the same page, get the next page and search the slot array from the begining. If the given obejct was the last object of a file return End-Of-Search. If next object is chosen return the OID and header of chosen object.
 
 6. EduOM_PrevObject
     Same as EduOM_NextObject except that first is changed into last and next is changed into previous. Please refer to explanation above.
