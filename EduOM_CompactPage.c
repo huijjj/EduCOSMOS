@@ -87,7 +87,37 @@ Four EduOM_CompactPage(
     Two    lastSlot;		/* last non empty slot */
     Two    i;			/* index variable */
 
+    // copy page to temp page
+    memcpy(&tpage, apage, sizeof(SlottedPage));
     
+    // move objects from temp page to given page
+    i = 0;
+    lastSlot = 0;
+    apageDataOffset = 0;
+    while(i < tpage.header.nSlots) {
+        if(tpage.slot[-1 * i].offset != EMPTYSLOT) {
+            if(slotNo != i) {
+                obj = &(tpage.data[tpage.slot[-1 * i].offset]);
+                len = ALIGNED_LENGTH(obj->header.length) + sizeof(ObjectHdr);
+                apage->slot[-1 * i].offset = apageDataOffset;
+                memcpy(&(apage->data[apageDataOffset]), obj, len); // copy object to page
+                apageDataOffset += len; 
+            }
+        }
+        i++;
+    }
+    if(slotNo != NIL) {
+        obj = &(tpage.data[tpage.slot[-1 * slotNo].offset]);
+        len = ALIGNED_LENGTH(obj->header.length) + sizeof(ObjectHdr);
+        apage->slot[-1 * slotNo].offset = apageDataOffset;
+        memcpy(&(apage->data[apageDataOffset]), obj, len); // copy object to page
+        apageDataOffset += len;
+    }
+
+    // update header
+    apage->header.free = apageDataOffset;
+    apage->header.unused = 0;
+
 
     return(eNOERROR);
     

@@ -281,8 +281,7 @@ Four eduom_CreateObject(
     }
     else {
         if(SP_CFREE(apage) < neededSpace) { // not enough contigouos region
-            // e = EduOM_CompactPage(apage, NIL); // compact page
-            e = OM_CompactPage(apage, NIL); // for test
+            e = EduOM_CompactPage(apage, NIL); // compact page
             if(e) {
                 BfM_FreeTrain(&pid, PAGE_BUF);
                 ERR(e);
