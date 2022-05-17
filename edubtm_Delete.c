@@ -125,16 +125,66 @@ Four edubtm_Delete(
             ERR(eNOTSUPPORTED_EDUBTM);
     }
 
-        
+
     *h = *f = FALSE;
     
-    
-    /* Delete following 2 lines before implement this function */
-    printf("Implementation of delete operation is optional (not compulsory),\n");
-    printf("and delete operation has not been implemented yet.\n");
+    if(e = BfM_GetTrain(root, &rpage, PAGE_BUF)) {
+        ERR(e);
+    }
 
 
-    return(eNOERROR);
+	if(rpage->any.hdr.type & INTERNAL) {
+		edubtm_BinarySearchInternal(&rpage->bi, kdesc, kval, &idx);
+
+		if(idx == -1) {
+			MAKE_PAGEID(child, root->volNo, rpage->bi.hdr.p0);
+		}
+		else {
+			iEntry = &(rpage->bi.data[rpage->bi.slot[-1 * idx]]);
+			
+            MAKE_PAGEID(child, root->volNo, iEntry->spid);
+		}
+
+		lf = FALSE;
+        lh = FALSE;
+		if(e = edubtm_Delete(catObjForFile, &child, kdesc, kval, oid, &lf, &lh, &litem, dlPool, dlHead)) {
+            ERR(e);
+        }
+
+		if(lf == TRUE) {
+			MAKE_PAGEID(pFid, catObjForFile->volNo, catObjForFile->pageNo);
+
+			btm_Underflow(&pFid, rpage, &child, idx, f, &lh, &litem, dlPool, dlHead);
+
+			if(lh == TRUE) {
+				memcpy(&tKey, &litem.klen, sizeof(KeyValue));
+				
+                if(!edubtm_BinarySearchInternal(rpage, kdesc, &tKey, &idx)) {
+					return (eNOTFOUND_BTM);
+                }
+
+				if(e = edubtm_InsertInternal(catObjForFile, rpage, &litem, idx, h, item)) {
+                    ERR(e);
+                }
+			}
+
+		}
+	}
+	else {
+		if(e = edubtm_DeleteLeaf(catObjForFile, root, rpage, kdesc, kval, oid, f, h, item, dlPool, dlHead)) {
+            ERR(e);
+        }
+	}
+
+    if(e = BfM_SetDirty(root, PAGE_BUF)) {
+        BfM_FreeTrain(root, PAGE_BUF);
+        ERR(e);
+    }
+	if(e = BfM_FreeTrain(root, PAGE_BUF)) {
+        ERR(e);
+    }
+	
+    return eNOERROR;
     
 }   /* edubtm_Delete() */
 
@@ -201,12 +251,34 @@ Four edubtm_DeleteLeaf(
             ERR(eNOTSUPPORTED_EDUBTM);
     }
 
+	for(i = 0; i < apage->hdr.nSlots; i++) {
+		lEntry = &(apage->data[apage->slot[-1 * i]]);
+		oidArray = &(lEntry->kval[ALIGNED_LENGTH(lEntry->klen)]);
+		
+        memcpy(&tOid, oidArray, sizeof(ObjectID));
 
-    /* Delete following 2 lines before implement this function */
-    printf("Implementation of delete operation is optional (not compulsory),\n");
-    printf("and delete operation has not been implemented yet.\n");
+		if(btm_ObjectIdComp(oid, &tOid) == EQUAL) {
+			entryLen = 4 + ALIGNED_LENGTH(lEntry->klen) + sizeof(ObjectID);
 
-	      
-    return(eNOERROR);
+			if(apage->slot[-1 * i] + entryLen == apage->hdr.free) {
+                apage->hdr.free -= entryLen;
+			} 
+            else {
+                apage->hdr.unused += entryLen;
+            }
+			break;
+		}
+	}
+
+	for(; i<apage->hdr.nSlots; i++) {
+		apage->slot[-1 * i] = apage->slot[-1 * (i + 1)];
+    }
+
+	apage->hdr.nSlots -= 1;
+	if(BL_FREE(apage) > BL_HALF) {
+		*f = TRUE;
+	}
+
+    return eNOERROR;
     
 } /* edubtm_DeleteLeaf() */

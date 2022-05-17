@@ -104,12 +104,34 @@ Four EduBtM_DeleteObject(
     }
 
 
-	/* Delete following 3 lines before implement this function */
-	printf("Implementation of delete operation is optional (not compulsory),\n");
-	printf("and delete operation has not been implemented yet.\n");
-	return(eNOTSUPPORTED_EDUBTM);
+	MAKE_PAGEID(pFid, catObjForFile->volNo, catObjForFile->pageNo);
+
+	if(e = edubtm_Delete(catObjForFile, root, kdesc, kval, oid, &lf, &lh, &item, dlPool, dlHead)) {
+        ERR(e);
+    }
+  
+	if(lf) {
+		if(e = btm_root_delete(&pFid, root, dlPool, dlHead)) {
+            ERR(e);
+        }
+       
+        if(e = BfM_SetDirty(root, PAGE_BUF)) {
+            ERR(e);
+        }
+	}
+
+	if(lh) {
+		if(e = edubtm_root_insert(catObjForFile, root, &item)) {
+            ERR(e);
+        }
+
+        if(e = BfM_SetDirty(root, PAGE_BUF)) {
+            ERR(e);
+        }
+	}
+
 
     
-    return(eNOERROR);
+    return eNOERROR;
     
 }   /* EduBtM_DeleteObject() */

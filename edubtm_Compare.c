@@ -92,7 +92,44 @@ Four edubtm_KeyCompare(
             ERR(eNOTSUPPORTED_EDUBTM);
     }
 
-        
-    return(EQUAL);
-    
+    if(kdesc->kpart[0].type == SM_INT) {
+        i1 = *((Four_Invariable *)&(key1->val[0]));
+        i2 = *((Four_Invariable *)&(key2->val[0]));
+      
+        if(i1 > i2) {
+            return GREAT;
+        }
+        else if(i1 < i2) {
+            return LESS;
+        }
+        else {
+            return EQUAL;
+        }
+    }
+    else {
+        len1 = *((Two *)&(key1->val[0]));
+        len2 = *((Two *)&(key2->val[0]));
+        kpartSize = 2;
+
+        for(j = 0; j < len1 && j < len2; j++, kpartSize++) {
+            left = &(key1->val[kpartSize]); 
+            right = &(key2->val[kpartSize]);
+
+            if(*left > *right) {
+                return GREAT;
+            }
+            if(*left < *right) {
+                return LESS;
+            }
+        }
+        if(len1 > len2) {
+            return GREAT;
+        }
+        if(len1 < len2) {
+            return LESS;
+        }
+        else {
+            return EQUAL;
+        }
+    }
 }   /* edubtm_KeyCompare() */

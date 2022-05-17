@@ -69,7 +69,7 @@ Four edubtm_LastObject(
     Four     		stopCompOp,	/* IN comparison operator of stop condition */
     BtreeCursor 	*cursor)	/* OUT the last BtreeCursor to be returned */
 {
-    int			i;
+	int			i;
     Four 		e;		/* error number */
     Four 		cmp;		/* result of comparison */
     BtreePage 		*apage;		/* pointer to the buffer holding current page */
@@ -93,8 +93,57 @@ Four edubtm_LastObject(
         if(kdesc->kpart[i].type!=SM_INT && kdesc->kpart[i].type!=SM_VARSTRING)
             ERR(eNOTSUPPORTED_EDUBTM);
     }
-    
 
-    return(eNOERROR);
+    MAKE_PAGEID(curPid, root->volNo, root->pageNo);
+    
+    if(e = BfM_GetTrain(root, &apage, PAGE_BUF)) {
+        ERR(e);
+    }
+    while(apage->any.hdr.type & INTERNAL) {
+        iEntry = &(apage->bi.data[apage->bi.slot[-(apage->bi.hdr.nSlots - 1)]]);
+        
+        MAKE_PAGEID(child, curPid.volNo, iEntry->spid);
+        
+        if(e = BfM_FreeTrain(&curPid, PAGE_BUF)) {
+            ERR(e);
+        }
+
+        curPid = child;
+
+        if(e = BfM_GetTrain(&curPid, &apage, PAGE_BUF)) {
+            ERR(e);
+        }
+    }
+
+    lEntry = &(apage->bl.data[apage->bl.slot[-(apage->bl.hdr.nSlots - 1)]]);
+    alignedKlen = ALIGNED_LENGTH(lEntry->klen);
+
+    cursor->slotNo = apage->bl.hdr.nSlots - 1;
+    cursor->leaf = curPid;
+    cursor->key.len = lEntry->klen;
+    memcpy(cursor->key.val, lEntry->kval, lEntry->klen);
+    memcpy(&(cursor->oid), &(lEntry->kval[alignedKlen]), sizeof(ObjectID));
+
+    cmp = edubtm_KeyCompare(kdesc, &(cursor->key), stopKval);
+    if(cmp == EQUAL) {
+        cursor->flag = CURSOR_ON;
+
+        if(stopCompOp == SM_GT) {
+            cursor->flag = CURSOR_EOS;
+        }
+
+    }
+    else if(cmp == GREAT) {
+        cursor->flag = CURSOR_ON;
+    }
+    else if(cmp == LESS) {
+        cursor->flag = CURSOR_EOS;
+    }
+
+    if(e = BfM_FreeTrain(&curPid, PAGE_BUF)) {
+        ERR(e);
+    }
+
+    return eNOERROR;
     
 } /* edubtm_LastObject() */

@@ -96,8 +96,17 @@ Four EduBtM_InsertObject(
         if(kdesc->kpart[i].type!=SM_INT && kdesc->kpart[i].type!=SM_VARSTRING)
             ERR(eNOTSUPPORTED_EDUBTM);
     }
+
+    if(e = edubtm_Insert(catObjForFile, root, kdesc, kval, oid, &lf, &lh, &item, dlPool, dlHead)) {
+        ERR(e);
+    }
+
+	if(lh) {
+		if(e = edubtm_root_insert(catObjForFile, root, &item)) {
+            ERR(e);
+        }
+	} 
     
-    
-    return(eNOERROR);
+    return eNOERROR;
     
 }   /* EduBtM_InsertObject() */

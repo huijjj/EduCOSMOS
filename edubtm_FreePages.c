@@ -81,8 +81,46 @@ Four edubtm_FreePages(
     btm_LeafEntry       *lEntry;        /* a leaf entry */
     DeallocListElem     *dlElem;        /* an element of dealloc list */
 
+    if(e = BfM_GetTrain(curPid, &apage, PAGE_BUF)) {
+        ERR(e);
+    }
 
-    
-    return(eNOERROR);
+    if(apage->any.hdr.type & INTERNAL) {
+        MAKE_PAGEID(tPid, curPid->volNo, apage->bi.hdr.p0);
+
+
+        for(i = 0; i < apage->bi.hdr.nSlots; i++){
+            iEntryOffset = apage->bi.slot[-1 * i];
+            iEntry = &(apage->bi.data[iEntryOffset]);
+
+            MAKE_PAGEID(tPid, curPid->volNo, iEntry->spid);
+
+            if(e = edubtm_FreePages(pFid, &tPid, dlPool, dlHead)) {
+                ERR(e);
+            }
+        }
+    }
+
+    apage->any.hdr.type = FREEPAGE;
+    if(e = BfM_SetDirty(curPid, PAGE_BUF)) {
+        BfM_FreeTrain(curPid, PAGE_BUF);
+        ERR(e);
+    }
+
+    if(e = BfM_FreeTrain(curPid, PAGE_BUF)) {
+        ERR(e);
+    }
+
+    if(e = Util_getElementFromPool(dlPool, &dlElem)) {
+        ERR(e);
+    }
+
+    dlElem->elem.pid= *curPid;
+    dlElem->type = DL_PAGE;
+
+    dlElem->next = dlHead->next;
+    dlHead->next = dlElem;
+
+    return eNOERROR;
     
 }   /* edubtm_FreePages() */

@@ -89,8 +89,55 @@ Four edubtm_FirstObject(
         if(kdesc->kpart[i].type!=SM_INT && kdesc->kpart[i].type!=SM_VARSTRING)
             ERR(eNOTSUPPORTED_EDUBTM);
     }
-    
 
-    return(eNOERROR);
+    MAKE_PAGEID(curPid, root->volNo, root->pageNo);
+
+    if(e = BfM_GetTrain(&curPid, &apage, PAGE_BUF)) {
+        ERR(e);
+    }
+    while(apage->any.hdr.type & INTERNAL) {
+        MAKE_PAGEID(child, curPid.volNo, apage->bi.hdr.p0);
+
+        if(e = BfM_FreeTrain(&curPid, PAGE_BUF)) {
+            ERR(e);
+        }
+
+        curPid = child;
+
+        if(e = BfM_GetTrain(&curPid, &apage,  PAGE_BUF)) {
+            ERR(e);
+        }
+    }
+
+
+    lEntry = &(apage->bl.data[apage->bl.slot[0]]);
+    alignedKlen = ALIGNED_LENGTH(lEntry->klen);
+    
+    cursor->slotNo = 0;
+    cursor->leaf = curPid;
+    cursor->key.len = lEntry->klen;
+    memcpy(cursor->key.val, lEntry->kval, lEntry->klen);
+    memcpy(&(cursor->oid), &(lEntry->kval[alignedKlen]), sizeof(ObjectID));
+
+    cmp = edubtm_KeyCompare(kdesc, &(cursor->key), stopKval);
+    if(cmp == EQUAL) {
+        cursor->flag = CURSOR_ON;
+
+        if(stopCompOp == SM_LT) {
+            cursor->flag = CURSOR_EOS;
+        }
+    }
+    else if(cmp == GREAT) {
+        cursor->flag = CURSOR_EOS;
+    }
+    else {
+        cursor->flag = CURSOR_ON;
+    }
+
+    if(e = BfM_FreeTrain(&curPid, PAGE_BUF)) {
+        ERR(e);
+    }
+
+    return eNOERROR;
     
 } /* edubtm_FirstObject() */

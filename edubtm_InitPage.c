@@ -66,7 +66,30 @@ Four edubtm_InitInternal(
     Four e;			/* error number */
     BtreeInternal *page;	/* a page pointer */
 
+    if(e=BfM_GetNewTrain(internal, &page, PAGE_BUF)) {
+        ERR(e);
+    }
 
+    MAKE_PAGEID(page->hdr.pid, internal->volNo, internal->pageNo);
+    
+    SET_PAGE_TYPE(page, BTREE_PAGE_TYPE);
+    page->hdr.type |= INTERNAL;
+    if(root) {
+        page->hdr.type |= ROOT;
+    }
+
+    page->hdr.free = 0;
+    page->hdr.unused = 0;
+    page->hdr.nSlots = 0;
+
+    if(e = BfM_SetDirty(&page->hdr.pid, PAGE_BUF)) {
+        BfM_FreeTrain(internal, PAGE_BUF);
+        ERR(e);
+    }
+    
+    if(e = BfM_FreeTrain(internal, PAGE_BUF)) {
+        ERR(e);
+    }
     
     return(eNOERROR);
     
@@ -100,7 +123,33 @@ Four edubtm_InitLeaf(
     BtreeLeaf *page;		/* a page pointer */
 
 
+    if(e=BfM_GetNewTrain(leaf, &page, PAGE_BUF)) {
+        ERR(e);
+    }
+
+    MAKE_PAGEID(page->hdr.pid, leaf->volNo, leaf->pageNo);
     
-    return(eNOERROR);
+    SET_PAGE_TYPE(page, BTREE_PAGE_TYPE);
+    page->hdr.type |= LEAF;
+    if(root) {
+        page->hdr.type |= ROOT;
+    }
+
+    page->hdr.free = 0;
+    page->hdr.unused = 0;
+    page->hdr.nSlots = 0;
+    page->hdr.prevPage = NIL;
+    page->hdr.nextPage = NIL;
+
+    if(e = BfM_SetDirty(&page->hdr.pid, PAGE_BUF)) {
+        BfM_FreeTrain(leaf, PAGE_BUF);
+        ERR(e);
+    }
+    
+    if(e = BfM_FreeTrain(leaf, PAGE_BUF)) {
+        ERR(e);
+    }
+    
+    return eNOERROR;
     
 }  /* edubtm_InitLeaf() */

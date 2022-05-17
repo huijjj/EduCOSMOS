@@ -107,6 +107,9 @@ Four EduBtM_FetchNext(
             ERR(eNOTSUPPORTED_EDUBTM);
     }
 
+    if(e = edubtm_FetchNext(kdesc, kval, compOp, current, next)) {
+        ERR(e);
+    }
     
     return(eNOERROR);
     
@@ -159,7 +162,116 @@ Four edubtm_FetchNext(
             ERR(eNOTSUPPORTED_EDUBTM);
     }
 
-    
-    return(eNOERROR);
+    leaf = current->leaf;
+	
+    next->flag = CURSOR_ON;
+	if(e = BfM_GetTrain(&leaf, &apage, PAGE_BUF)) {
+        ERR(e);
+    }
+
+	if (compOp == SM_EQ) {
+        next->flag = CURSOR_EOS;
+    }
+    else if(compOp == SM_LT || compOp == SM_LE || compOp == SM_EOF) {
+        current->slotNo += 1;
+
+        if(current->slotNo >= apage->hdr.nSlots) {
+            if (apage->hdr.nextPage != NIL) {
+                
+                if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+                    ERR(e);
+                }
+
+                MAKE_PAGEID(leaf, leaf.volNo, apage->hdr.nextPage);
+                
+                if(e = BfM_GetTrain(&leaf, &apage, PAGE_BUF)) {
+                    ERR(e);
+                }
+                
+                current->slotNo = 0;
+            }
+            else {
+                next->flag = CURSOR_EOS;
+            }
+	    }
+        else {
+            if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+                ERR(e);
+            }
+            
+            if(e = BfM_GetTrain(&leaf, &apage, PAGE_BUF)) {
+                ERR(e);
+            }
+        }
+    }
+	else if(compOp == SM_GT || compOp == SM_GE || compOp == SM_BOF) {
+        current->slotNo -= 1;
+
+        if(current->slotNo < 0) {
+            if(apage->hdr.prevPage != NIL) {
+                if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+                    ERR(e);
+                }
+
+                MAKE_PAGEID(leaf, leaf.volNo, apage->hdr.prevPage);
+                
+                if(e = BfM_GetTrain(&leaf, &apage, PAGE_BUF)) {
+                    ERR(e);
+                }
+                
+                current->slotNo = apage->hdr.nSlots - 1;
+            }
+            else {
+                next->flag = CURSOR_EOS;	
+            }
+        }
+        else {
+            if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+                ERR(e);
+            }
+            
+            if(e = BfM_GetTrain(&leaf, &apage, PAGE_BUF)) {
+                ERR(e);
+            }
+        }
+    }
+
+	if(next->flag == CURSOR_EOS) {
+		if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+            ERR(e);
+        }
+	}
+	else {
+		entry = &(apage->data[apage->slot[-1 * current->slotNo]]);
+		alignedKlen = ALIGNED_LENGTH(entry->klen);
+
+		next->leaf = leaf;
+		next->slotNo = current->slotNo;
+		memcpy(&next->oid, &entry->kval + alignedKlen, sizeof(ObjectID));
+		memcpy(&next->key, &entry->klen, sizeof(KeyValue));
+
+		cmp = edubtm_KeyCompare(kdesc, &next->key, kval);
+		if(cmp == EQUAL) {
+            if(compOp == SM_LT || compOp == SM_GT) {
+                next->flag = CURSOR_EOS;
+            }
+        }
+        else if(cmp == GREAT){
+            if(compOp == SM_LT || compOp == SM_LE) {
+                next->flag = CURSOR_EOS;
+            }
+        }
+        else if(cmp == LESS) {
+            if(compOp == SM_GT || compOp == SM_GE) {
+                next->flag = CURSOR_EOS;
+            }
+        }
+
+		if(e = BfM_FreeTrain(&leaf, PAGE_BUF)) {
+            ERR(e);
+        }
+	}
+
+    return eNOERROR;
     
 } /* edubtm_FetchNext() */

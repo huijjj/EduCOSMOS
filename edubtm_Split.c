@@ -93,8 +93,116 @@ Four edubtm_SplitInternal(
     btm_InternalEntry           *nEntry;                /* internal entry in the new page, npage*/
     Boolean                     isTmp;
 
+	BtreeInternal tpage;
 
-    
+    memcpy(&tpage, fpage, PAGESIZE);
+
+	j = 0;
+    k = 0;
+	sum = 0;
+	fEntryOffset = 0;
+    nEntryOffset = 0;
+	if(e = btm_AllocPage(catObjForFile, &fpage->hdr.pid, &newPid)) {
+        ERR(e);
+    }
+	if(e = edubtm_InitInternal(&newPid, FALSE, FALSE)) {
+        ERR(e);
+    }
+	if(e = BfM_GetNewTrain(&newPid, &npage, PAGE_BUF)) {
+        ERR(e);
+    }
+
+	maxLoop = fpage->hdr.nSlots + 1; 
+    high += 1;
+	for(i = 0; i < maxLoop; i++) {
+		if(sum < BI_HALF) {
+			if(i < high) {
+				fEntry = &(tpage.data[tpage.slot[-1 * i]]);
+				entryLen = sizeof(ShortPageID) + 2 + fEntry->klen;
+				
+                memcpy(&(fpage->data[fEntryOffset]), &(tpage.data[tpage.slot[-1 * i]]), entryLen);
+			}
+			else if(i == high) {
+				entryLen = sizeof(ShortPageID) + 2 + ALIGNED_LENGTH(item->klen);
+				
+                memcpy(&(fpage->data[fEntryOffset]), item, entryLen);
+			}
+			else {
+				fEntry = &(tpage.data[tpage.slot[-1 * (i - 1)]]);
+				entryLen = sizeof(ShortPageID) + 2 + fEntry->klen;
+
+				memcpy(&(fpage->data[fEntryOffset]), &(tpage.data[tpage.slot[-1 * (i - 1)]]), entryLen);
+			}
+
+			fpage->slot[-1 * j] = fEntryOffset;
+			fEntryOffset += entryLen;
+			j++;
+		}
+		else {
+			if(i < high) {
+				nEntry = &(tpage.data[tpage.slot[-1 * i]]);
+				entryLen = sizeof(ShortPageID) + 2 + nEntry->klen;
+
+				memcpy(&(npage->data[nEntryOffset]), &(tpage.data[tpage.slot[-1*i]]), entryLen);
+
+				if(tpage.slot[-1 * i] + entryLen == fpage->hdr.free) {
+					fpage->hdr.free -= entryLen;
+                }
+				else {
+					fpage->hdr.unused += entryLen;
+                }
+			}
+			else if(i == high) {
+				entryLen = sizeof(ShortPageID) + 2 + item->klen;
+
+				memcpy(&(npage->data[nEntryOffset]), item, entryLen);
+			}
+			else {
+				nEntry = &(tpage.data[tpage.slot[-1 * (i - 1)]]);
+				entryLen = sizeof(ShortPageID) + 2 + nEntry->klen;
+
+				memcpy(&(npage->data[nEntryOffset]), &(tpage.data[tpage.slot[-1 * (i - 1)]]), entryLen);
+				
+                if(tpage.slot[-1 * (i - 1)] + entryLen == fpage->hdr.free) {
+					fpage->hdr.free -= entryLen;
+                }
+				else {
+					fpage->hdr.unused += entryLen;
+                }
+			}
+
+			npage->slot[-1 * k] = nEntryOffset;
+			nEntryOffset += entryLen;
+			k++;
+		}
+
+		sum += entryLen + 2;
+	}
+
+	nEntry = &(npage->data[npage->slot[0]]);
+	npage->hdr.p0 = nEntry->spid;
+    npage->hdr.free = nEntryOffset;
+	npage->hdr.nSlots = k;
+	
+    fpage->hdr.nSlots = j;
+	memcpy(ritem, nEntry, sizeof(InternalItem));
+	
+	if(fpage->hdr.type & ROOT) {
+		fpage->hdr.type -= ROOT;
+	}
+
+	if(e = BfM_SetDirty(&newPid, PAGE_BUF)) {
+        BfM_FreeTrain(&newPid, PAGE_BUF);
+        ERR(e);
+    }
+	if(e = BfM_SetDirty(&fpage->hdr.pid, PAGE_BUF)) {
+        BfM_FreeTrain(&newPid, PAGE_BUF);
+        ERR(e);
+    }
+    if(e = BfM_FreeTrain(&newPid, PAGE_BUF)) {
+        ERR(e);
+    }
+
     return(eNOERROR);
     
 } /* edubtm_SplitInternal() */
@@ -117,7 +225,6 @@ Four edubtm_SplitInternal(
  *  Internal pages do not maintain the linked list, but leaves do it, so links
  *  are properly updated.
  *
- * Returns:
  *  Error code
  *  eDUPLICATEDOBJECTID_BTM
  *    some errors caused by function calls
@@ -158,8 +265,154 @@ Four edubtm_SplitLeaf(
     Boolean                     flag;
     Boolean                     isTmp;
  
-    
+    memcpy(&tpage, fpage, PAGESIZE);
+	
+	if(e = btm_AllocPage(catObjForFile, &fpage->hdr.pid, &newPid)) {
+        ERR(e);
+    }
+	if(e = edubtm_InitLeaf(&newPid, FALSE, FALSE)) {
+        ERR(e);
+    }
+	if(e = BfM_GetNewTrain(&newPid, &npage, PAGE_BUF)) {
+        ERR(e);
+    }
 
-    return(eNOERROR);
+	j = 0;
+	k = 0;
+	sum = 0;
+    high += 1;
+	flag = FALSE;
+	fEntryOffset = 0;
+	nEntryOffset = 0;
+	maxLoop = fpage->hdr.nSlots + 1;
+	for(i = 0; i < maxLoop; i++) {
+		if(sum < BL_HALF) {
+			if(i < high) {
+				fEntry = &(tpage.data[tpage.slot[-1 * i]]);
+				entryLen = 4 + ALIGNED_LENGTH(fEntry->klen) + sizeof(ObjectID);
+
+				memcpy(&(fpage->data[fEntryOffset]), &(tpage.data[tpage.slot[-1 * i]]), entryLen);
+			}
+			else if(i == high) {
+				fEntry = &(item->nObjects);
+				entryLen = 4 + ALIGNED_LENGTH(item->klen);
+
+				memcpy(&(fpage->data[fEntryOffset]), fEntry, entryLen);
+				memcpy(&(fpage->data[fEntryOffset + entryLen]), &(item->oid), sizeof(ObjectID));
+				
+                entryLen += sizeof(ObjectID);
+				flag = TRUE;
+			}
+			else {
+				fEntry = &(tpage.data[tpage.slot[-1 * (i - 1)]]);
+				entryLen = 4 + ALIGNED_LENGTH(fEntry->klen) + sizeof(ObjectID);
+
+				memcpy(&(fpage->data[fEntryOffset]), &(tpage.data[tpage.slot[-1 * (i - 1)]]), entryLen);
+			}
+
+			fpage->slot[-1 * j] = fEntryOffset;
+			
+            fEntryOffset += entryLen;
+			j++;
+		}
+		else {
+			if(i < high) {
+				nEntry = &(tpage.data[tpage.slot[-1 * i]]);
+				entryLen = 4 + ALIGNED_LENGTH(nEntry->klen) + sizeof(ObjectID);
+				
+                memcpy(&(npage->data[nEntryOffset]), &(tpage.data[tpage.slot[-1 * i]]), entryLen);
+
+				if(tpage.slot[-1 * i] + entryLen == fpage->hdr.free) {
+					fpage->hdr.free -= entryLen;
+                }
+				else {
+					fpage->hdr.unused += entryLen;
+                }
+			}
+			else if(i == high) {
+				nEntry = &(item->nObjects);
+				entryLen = 4 + ALIGNED_LENGTH(item->klen);
+
+				memcpy(&(npage->data[nEntryOffset]), nEntry, entryLen);
+				memcpy(&(npage->data[nEntryOffset + entryLen]), &item->oid, sizeof(ObjectID));
+
+				entryLen += sizeof(ObjectID);
+			}
+			else {
+				nEntry = &(tpage.data[tpage.slot[-1 * (i - 1)]]);
+				entryLen = 4 + ALIGNED_LENGTH(nEntry->klen) + sizeof(ObjectID);
+
+				memcpy(&(npage->data[nEntryOffset]), &(tpage.data[tpage.slot[-1 * (i - 1)]]), entryLen);
+				
+                if (tpage.slot[-1 * (i - 1)] + entryLen == fpage->hdr.free) {
+					fpage->hdr.free -= entryLen;
+                }
+				else {
+					fpage->hdr.unused += entryLen;
+                }
+			}
+
+			npage->slot[-1 * k] = nEntryOffset;
+			
+            nEntryOffset += entryLen;
+			
+            k++;
+		}
+
+		sum += entryLen + 2;
+	}
+
+	if(flag) {
+		fpage->hdr.free += entryLen;
+    }
+
+	npage->hdr.nSlots = k;
+    npage->hdr.free = nEntryOffset;
+	npage->hdr.prevPage = fpage->hdr.pid.pageNo;
+	npage->hdr.nextPage = fpage->hdr.nextPage;
+	
+	fpage->hdr.nSlots = j;
+    fpage->hdr.nextPage = npage->hdr.pid.pageNo;
+	
+    if(npage->hdr.nextPage != NIL) {
+        MAKE_PAGEID(nextPid, npage->hdr.pid.volNo, npage->hdr.nextPage);
+
+        if(e = BfM_GetTrain(&nextPid, &mpage, PAGE_BUF)) {
+            ERR(e);
+        }
+    
+        mpage->hdr.prevPage = newPid.pageNo;
+
+        if(e = BfM_SetDirty(&nextPid, PAGE_BUF)) {
+            BfM_FreeTrain(&nextPid, PAGE_BUF);
+            ERR(e);
+        }
+        if(e = BfM_FreeTrain(&nextPid, PAGE_BUF)) {
+            ERR(e);
+        }
+    }
+
+	nEntry = &(npage->data[npage->slot[0]]);
+    ritem->spid = newPid.pageNo;
+    ritem->klen = nEntry->klen;
+    memcpy(ritem->kval, nEntry->kval, nEntry->klen);
+
+	if(fpage->hdr.type & ROOT) {
+		fpage->hdr.type -= ROOT;
+	}
+
+	if(e = BfM_SetDirty(&newPid, PAGE_BUF)) {
+        BfM_FreeTrain(&newPid, PAGE_BUF);
+        ERR(e);
+    }
+	if(e = BfM_SetDirty(&fpage->hdr.pid, PAGE_BUF)) {
+        BfM_FreeTrain(&newPid, PAGE_BUF);
+        ERR(e);
+    }
+	if(e = BfM_FreeTrain(&newPid, PAGE_BUF)) {
+        ERR(e);
+    }
+
+	return eNOERROR;
     
 } /* edubtm_SplitLeaf() */

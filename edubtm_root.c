@@ -81,7 +81,67 @@ Four edubtm_root_insert(
     Boolean   isTmp;
 
 
+    if(e = btm_AllocPage(catObjForFile, root, &newPid)) {
+        ERR(e);
+    }
+    if(e = BfM_GetTrain(root, &rootPage, PAGE_BUF)) {
+        ERR(e);
+    }
+    if(e = BfM_GetNewTrain(&newPid, &newPage, PAGE_BUF)) {
+        ERR(e);
+    }
+
+    memcpy(newPage, rootPage, PAGESIZE);
+    newPage->any.hdr.pid = newPid;
+
+    if(e = edubtm_InitInternal(root, TRUE, FALSE)) {
+        ERR(e);
+    }
+
+    rootPage->bi.slot[0] = 0;
+    entry = &(rootPage->bi.data[rootPage->bi.slot[0]]);
+
+    memcpy(entry, item, 4 + ALIGNED_LENGTH(2 + item->klen));
     
-    return(eNOERROR);
+    rootPage->bi.hdr.p0 = newPid.pageNo;
+    rootPage->bi.hdr.nSlots = 1;
+    rootPage->bi.hdr.free = 4 + ALIGNED_LENGTH(2 + item->klen);
+
+    if(newPage->any.hdr.type & LEAF) { 
+        MAKE_PAGEID(nextPid, newPage->bl.hdr.pid.volNo, newPage->bl.hdr.nextPage);
+
+        if(e = BfM_GetTrain(&nextPid, &nextPage, PAGE_BUF)) {
+            ERR(e);
+        }
+
+        nextPage->hdr.prevPage = newPid.pageNo;
+        
+        if(e = BfM_SetDirty(&nextPid,PAGE_BUF)) {
+            BfM_FreeTrain(&nextPid, PAGE_BUF);
+            ERR(e);
+        }
+        if(e= BfM_FreeTrain(&nextPid, PAGE_BUF)) {
+            ERR(e);
+        }
+    }
+
+    if(e = BfM_SetDirty(&newPid, PAGE_BUF)) {
+        BfM_FreeTrain(&newPid, PAGE_BUF);
+        BfM_FreeTrain(root, PAGE_BUF);
+        ERR(e);
+    }
+    if(e = BfM_FreeTrain(&newPid, PAGE_BUF)) {
+        BfM_FreeTrain(root, PAGE_BUF);
+        ERR(e);
+    }
+    if(e = BfM_SetDirty(root, PAGE_BUF)) {
+        BfM_FreeTrain(root, PAGE_BUF);
+        ERR(e);
+    }
+    if(e = BfM_FreeTrain(root, PAGE_BUF)) {
+        ERR(e);
+    }
+    
+    return eNOERROR;
     
 } /* edubtm_root_insert() */

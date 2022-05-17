@@ -62,10 +62,6 @@ Four EduBtM_DropIndex(
 {
     Four e;			/* for the error number */
 
-
-    /*@ Free all pages concerned with the root. */
-
-	
-    return(eNOERROR);
+    return edubtm_FreePages(pFid, rootPid, dlPool, dlHead);
     
 } /* EduBtM_DropIndex() */
